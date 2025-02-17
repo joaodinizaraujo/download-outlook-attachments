@@ -1,4 +1,9 @@
 import os
+import re
+
+
+def sanitize_folder_name(s: str) -> str:
+    return re.sub(r"[<>:\"/\\|?*']", ' - ', s).strip()
 
 
 def create_directory_if_not_exists(*dirs: str) -> None:

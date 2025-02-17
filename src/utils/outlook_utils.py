@@ -7,7 +7,15 @@ import win32com
 import win32com.client as client
 from datetime import datetime
 
-from src.utils.path_utils import join_without_overwriting, create_directory_if_not_exists
+from src.utils.path_utils import create_directory_if_not_exists, sanitize_folder_name
+
+NOT_ACCEPTED_FORMATS = [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".ics"
+]
+MAX_PATH_LENGTH = 255
 
 
 def get_email_info(message: Any) -> dict[str, str]:
@@ -70,7 +78,6 @@ def save_attachments(message: Any, docs_dir: str) -> bool:
     :param docs_dir: pasta onde os documentos serão salvos
     :return: bool indicando se salvou algum anexo
     """
-
     cont = 0
     attachments = message.Attachments
     info = get_email_info(message)
@@ -79,24 +86,40 @@ def save_attachments(message: Any, docs_dir: str) -> bool:
         attachment = attachments.Item(i)
         cont += 1
 
-        final_dir = os.path.join(docs_dir, info["sender_name"])
-        create_directory_if_not_exists(final_dir)
-        saved_file_path = join_without_overwriting(final_dir, attachment.FileName)
+        filename, extension = os.path.splitext(attachment.FileName)
+        if extension.lower() in NOT_ACCEPTED_FORMATS or len(extension) == 0:
+            continue
+
+        sender_folder = sanitize_folder_name(info["sender_name"])
+        subject_folder = sanitize_folder_name(info["subject"])
+        base_path = os.path.join(docs_dir, sender_folder, subject_folder)
+
+        if len(base_path) > MAX_PATH_LENGTH - 50:
+            subject_folder = subject_folder[:MAX_PATH_LENGTH - len(docs_dir) - len(sender_folder) - 10]
+            base_path = os.path.join(docs_dir, sender_folder, subject_folder)
+
+        create_directory_if_not_exists(base_path)
+
+        saved_file_path = os.path.join(base_path, attachment.FileName)
+
+        if len(saved_file_path) > MAX_PATH_LENGTH:
+            max_filename_length = MAX_PATH_LENGTH - len(base_path) - len(extension) - 5
+            filename = filename[:max_filename_length] + "_cut"
+            saved_file_path = os.path.join(base_path, filename + extension)
 
         try:
             attachment.SaveAsFile(saved_file_path)
         except Exception as e:
             print(f"Erro ao salvar '{attachment.FileName}': {e}")
 
-    if cont == 0:
-        return False
+    return cont > 0
 
-    return True
 
 def get_inbox():
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
     inbox = outlook.GetDefaultFolder(6)
     return inbox
+
 
 def check_email(base_dir: str) -> list[dict[str, str]]:
     """

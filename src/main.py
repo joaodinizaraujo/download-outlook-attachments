@@ -15,10 +15,10 @@ from src.utils.path_utils import (
 # no contrário utiliza a pasta da main.py
 if getattr(sys, "frozen", False):
     SRC_DIR = os.getcwd()
-    DOCS_DIR = os.path.join(SRC_DIR, "documentos")
+    DOCS_DIR = os.path.join(SRC_DIR, "docs")
 else:
     SRC_DIR = os.path.dirname(__file__)
-    DOCS_DIR = os.path.join(os.path.join(SRC_DIR, ".."), "documentos")
+    DOCS_DIR = os.path.join(os.path.join(SRC_DIR, ".."), "docs")
 
 
 def main():
