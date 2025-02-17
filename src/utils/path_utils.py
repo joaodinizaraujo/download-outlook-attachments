@@ -12,26 +12,6 @@ def create_directory_if_not_exists(*dirs: str) -> None:
             os.makedirs(directory)
 
 
-def replace_without_overwriting(origin_path: str, destiny_path: str) -> None:
-    """
-    Move um arquivo para o destino sem sobrescrever arquivos existentes.
-    Caso o destino já tenha um arquivo com o mesmo nome, adiciona um sufixo numérico ao nome
-    antes da extensão até encontrar um nome disponível.
-
-    :param origin_path: caminho completo do arquivo de origem
-    :param destiny_path: caminho completo do arquivo de destino
-    """
-
-    base_name, extension = os.path.splitext(destiny_path)
-    counter = 1
-
-    while os.path.exists(destiny_path):
-        destiny_path = f"{base_name}_{counter}{extension}"
-        counter += 1
-
-    os.replace(origin_path, destiny_path)
-
-
 def join_without_overwriting(base_dir: str, file_name: str) -> str:
     """
     Gera um caminho único para o arquivo, evitando sobrescrita.

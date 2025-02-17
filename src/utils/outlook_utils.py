@@ -3,9 +3,11 @@ from typing import Any
 
 import psutil
 import pyautogui as pg
+import win32com
 import win32com.client as client
+from datetime import datetime
 
-from src.utils.path_utils import join_without_overwriting
+from src.utils.path_utils import join_without_overwriting, create_directory_if_not_exists
 
 
 def get_email_info(message: Any) -> dict[str, str]:
@@ -71,12 +73,15 @@ def save_attachments(message: Any, docs_dir: str) -> bool:
 
     cont = 0
     attachments = message.Attachments
+    info = get_email_info(message)
 
     for i in range(1, attachments.Count + 1):
         attachment = attachments.Item(i)
         cont += 1
 
-        saved_file_path = join_without_overwriting(xml_dir, attachment.FileName)
+        final_dir = os.path.join(docs_dir, info["sender_name"])
+        create_directory_if_not_exists(final_dir)
+        saved_file_path = join_without_overwriting(final_dir, attachment.FileName)
 
         try:
             attachment.SaveAsFile(saved_file_path)
@@ -88,45 +93,31 @@ def save_attachments(message: Any, docs_dir: str) -> bool:
 
     return True
 
-
-# def get_folder_by_name(folder_name: str):
-#     """
-#     Retorna uma pasta no nível raiz do Outlook pelo nome.
-#     :param folder_name: Nome da pasta desejada
-#     :return: Objeto Folder do Outlook ou None se não encontrada
-#     """
-#     outlook = client.Dispatch("Outlook.Application")
-#     namespace = outlook.GetNamespace("MAPI")
-
-#     for account in namespace.Folders:
-#         if folder_name in [folder.Name for folder in account.Folders]:
-#             return account.Folders[folder_name]
-
-#     return None
-
-
-
 def get_inbox():
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
     inbox = outlook.GetDefaultFolder(6)
     return inbox
 
-def check_email(docs_dir: str) -> list[dict[str, str]]:
+def check_email(base_dir: str) -> list[dict[str, str]]:
     """
     Varre emails não lidos na Caixa de Entrada e salva os documentos.
-    :param docs_dir: pasta onde os documentos serão salvos
+    :param base_dir: pasta onde os documentos serão salvos
     :return: lista de dicionários contendo as principais informações das mensagens processadas
     """
     inbox = get_inbox()
     data = []
-    
+    current_year = datetime.now().year
+
     for message in inbox.Items:
         try:
-            save_attachments(message, docs_dir)
-        except Exception as e:
-            print(f"Erro ao processar anexos: {e}")
+            email_year = message.ReceivedTime.year
+            if email_year != current_year:
+                continue
 
-        message_data = get_email_info(message)
-        data.append(message_data)
-    
+            save_attachments(message, base_dir)
+            message_data = get_email_info(message)
+            data.append(message_data)
+        except Exception as e:
+            print(f"Erro ao processar e-mail: {e}")
+
     return data
