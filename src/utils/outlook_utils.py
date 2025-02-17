@@ -137,9 +137,9 @@ def check_email(base_dir: str) -> list[dict[str, str]]:
             if email_year != current_year:
                 continue
 
-            save_attachments(message, base_dir)
-            message_data = get_email_info(message)
-            data.append(message_data)
+            if save_attachments(message, base_dir):
+                message_data = get_email_info(message)
+                data.append(message_data)
         except Exception as e:
             print(f"Erro ao processar e-mail: {e}")
 

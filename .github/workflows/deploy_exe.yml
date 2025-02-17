@@ -28,7 +28,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build Executable
-        run: pyinstaller --onefile --name downloader src/main.py
+        run: pyinstaller --onefile --hidden-import=win32timezone --name downloader src/main.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
