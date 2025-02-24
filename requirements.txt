@@ -1,3 +1,6 @@
 pyautogui
 psutil
 pywin32
+python-docx
+pypdf2
+openai==0.28

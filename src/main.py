@@ -16,19 +16,30 @@ from src.utils.path_utils import (
 if getattr(sys, "frozen", False):
     SRC_DIR = os.getcwd()
     DOCS_DIR = os.path.join(SRC_DIR, "docs")
+    GPT_KEY_FILE = os.path.join(SRC_DIR, "key.txt")
 else:
     SRC_DIR = os.path.dirname(__file__)
-    DOCS_DIR = os.path.join(os.path.join(SRC_DIR, ".."), "docs")
+    ROOT_DIR = os.path.join(SRC_DIR, "..")
+    DOCS_DIR = os.path.join(ROOT_DIR, "docs")
+    GPT_KEY_FILE = os.path.join(ROOT_DIR, "key.txt")
 
 
 def main():
+    print("Começando...")
+
+    openai_key = None
+    if not os.path.exists(GPT_KEY_FILE):
+        print("Chave do GPT não encontrada... Não terá resumos rs")
+    else:
+        openai_key = open(GPT_KEY_FILE).read()
+
     create_directory_if_not_exists(DOCS_DIR)
 
     while not is_outlook_open():  # abrindo outlook
         open_outlook(is_outlook_open())
         sleep(10)
 
-    data = check_email(DOCS_DIR)  # pegando dados dos emails
+    data = check_email(DOCS_DIR, openai_key)  # pegando dados dos emails
 
     if len(data) > 0:
         print("\nAnexos baixados!")

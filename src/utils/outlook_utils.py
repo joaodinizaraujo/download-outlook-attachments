@@ -8,6 +8,8 @@ import win32com.client as client
 from datetime import datetime
 
 from src.utils.path_utils import create_directory_if_not_exists, sanitize_folder_name
+from src.utils.doc_reader import read_pdf, read_docx
+from src.utils.openai_client import send_prompt
 
 NOT_ACCEPTED_FORMATS = [
     ".png",
@@ -71,9 +73,10 @@ def open_outlook(is_process_open: bool) -> None:
         os.startfile("outlook")
 
 
-def save_attachments(message: Any, docs_dir: str) -> bool:
+def save_attachments(message: Any, docs_dir: str, openai_key: str | None = None) -> bool:
     """
     Varre os anexos da mensagem e salva os documentos sem sobrescrita.
+    :param openai_key: chave da api da openai para resumos
     :param message: mensagem do Outlook
     :param docs_dir: pasta onde os documentos serão salvos
     :return: bool indicando se salvou algum anexo
@@ -101,7 +104,6 @@ def save_attachments(message: Any, docs_dir: str) -> bool:
         create_directory_if_not_exists(base_path)
 
         saved_file_path = os.path.join(base_path, attachment.FileName)
-
         if len(saved_file_path) > MAX_PATH_LENGTH:
             max_filename_length = MAX_PATH_LENGTH - len(base_path) - len(extension) - 5
             filename = filename[:max_filename_length] + "_cut"
@@ -109,6 +111,22 @@ def save_attachments(message: Any, docs_dir: str) -> bool:
 
         try:
             attachment.SaveAsFile(saved_file_path)
+
+            if openai_key is not None and extension.lower() in [".pdf", ".docx"]:
+                try:
+                    prompt = "Por favor, pegue esse conteúdo de texto abaixo e faça um resumo: \n"
+                    if extension.lower() == ".pdf":
+                        prompt += read_pdf(saved_file_path)
+                    elif extension.lower() == ".docx":
+                        prompt += read_docx(saved_file_path)
+
+                    print(prompt)
+                    summary = send_prompt(openai_key, prompt)
+                    summary_path = os.path.join(base_path, filename[:len(filename) - 12] + "_resumo.txt")
+                    with open(summary_path, "w", encoding="utf8") as f:
+                        f.write(summary)
+                except Exception as e:
+                    print(f"Erro ao fazer resumo do arquivo '{attachment.FileName}': {e}")
         except Exception as e:
             print(f"Erro ao salvar '{attachment.FileName}': {e}")
 
@@ -121,9 +139,10 @@ def get_inbox():
     return inbox
 
 
-def check_email(base_dir: str) -> list[dict[str, str]]:
+def check_email(base_dir: str, openai_key: str | None = None) -> list[dict[str, str]]:
     """
     Varre emails não lidos na Caixa de Entrada e salva os documentos.
+    :param openai_key: chave do gpt
     :param base_dir: pasta onde os documentos serão salvos
     :return: lista de dicionários contendo as principais informações das mensagens processadas
     """
@@ -137,7 +156,7 @@ def check_email(base_dir: str) -> list[dict[str, str]]:
             if email_year != current_year:
                 continue
 
-            if save_attachments(message, base_dir):
+            if save_attachments(message, base_dir, openai_key):
                 message_data = get_email_info(message)
                 data.append(message_data)
         except Exception as e:
