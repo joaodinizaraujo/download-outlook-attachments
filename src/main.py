@@ -42,7 +42,7 @@ def main():
     data = check_email(DOCS_DIR, openai_key)  # pegando dados dos emails
 
     if len(data) > 0:
-        print("\nAnexos baixados!")
+        print("Anexos baixados!")
     else:
         print("Nenhum email.")
 

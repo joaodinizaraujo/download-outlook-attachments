@@ -7,7 +7,7 @@ import win32com
 import win32com.client as client
 from datetime import datetime
 
-from src.utils.path_utils import create_directory_if_not_exists, sanitize_folder_name
+from src.utils.path_utils import create_directory_if_not_exists, sanitize_folder_name, join_without_overwriting
 from src.utils.doc_reader import read_pdf, read_docx
 from src.utils.openai_client import send_prompt
 
@@ -103,26 +103,35 @@ def save_attachments(message: Any, docs_dir: str, openai_key: str | None = None)
 
         create_directory_if_not_exists(base_path)
 
-        saved_file_path = os.path.join(base_path, attachment.FileName)
+        saved_file_path = join_without_overwriting(base_path, file_name=attachment.FileName)
         if len(saved_file_path) > MAX_PATH_LENGTH:
             max_filename_length = MAX_PATH_LENGTH - len(base_path) - len(extension) - 5
             filename = filename[:max_filename_length] + "_cut"
-            saved_file_path = os.path.join(base_path, filename + extension)
+            saved_file_path = join_without_overwriting(base_path, file_name=filename + extension)
 
         try:
             attachment.SaveAsFile(saved_file_path)
 
             if openai_key is not None and extension.lower() in [".pdf", ".docx"]:
                 try:
-                    prompt = "Por favor, pegue esse conteúdo de texto abaixo e faça um resumo: \n"
+                    prompt = "Por favor, pegue esse conteúdo de texto abaixo e faça um resumo. "
+                    prompt += "Use quebra de linhas para facilitar a leitura do usuário. "
+                    prompt += "Daqui pra baixo, se não tiver nenhum conteúdo, "
+                    prompt += "não faça um resumo, avise que não foi possível extrair o conteúdo do documento."
+                    prompt += "\n\n"
+                    content = ""
                     if extension.lower() == ".pdf":
-                        prompt += read_pdf(saved_file_path)
+                        content = read_pdf(saved_file_path)
                     elif extension.lower() == ".docx":
-                        prompt += read_docx(saved_file_path)
+                        content = read_docx(saved_file_path)
 
-                    print(prompt)
+                    if len(content) == 0:
+                        raise Exception(f"sem conteúdo de texto no documento: {saved_file_path}.")
+
+                    prompt += content
                     summary = send_prompt(openai_key, prompt)
-                    summary_path = os.path.join(base_path, filename[:len(filename) - 12] + "_resumo.txt")
+                    print(summary)
+                    summary_path = join_without_overwriting(base_path, file_name=filename[:len(filename) - 12] + "_resumo.txt")
                     with open(summary_path, "w", encoding="utf8") as f:
                         f.write(summary)
                 except Exception as e:

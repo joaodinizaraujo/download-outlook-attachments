@@ -5,7 +5,7 @@ from PyPDF2 import PdfReader
 def read_docx(path: str) -> str:
     doc = Document(path)
 
-    return "".join([p.text for p in doc.paragraphs])
+    return "\n".join([p.text for p in doc.paragraphs])
 
 
 def read_pdf(path: str) -> str:
