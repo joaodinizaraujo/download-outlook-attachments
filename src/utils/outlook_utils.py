@@ -110,6 +110,8 @@ def save_attachments(message: Any, selected_option, docs_dir: str, openai_key: s
             base_path = os.path.join(docs_dir, "BNCC", sender_folder, subject_folder)
         elif selected_option == 3 and any(item.lower() in sender_folder for item in TECH):
             base_path = os.path.join(docs_dir, "TECH", sender_folder, subject_folder)
+        else:
+            continue
         
         if len(base_path) > MAX_PATH_LENGTH - 50:
             subject_folder = subject_folder[:MAX_PATH_LENGTH - len(docs_dir) - len(sender_folder) - 10]
