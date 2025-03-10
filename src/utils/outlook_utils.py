@@ -83,7 +83,7 @@ def save_attachments(message: Any, selected_option, docs_dir: str, openai_key: s
     :param openai_key: chave da api da openai para resumos
     :param message: mensagem do Outlook
     :param docs_dir: pasta onde os documentos serão salvos
-    :param option: opção de salvamento (1 = normal, 2 = BNCC, 3 = TECH)
+    :param selected_option: opção de salvamento (1 = normal, 2 = BNCC, 3 = TECH)
     :return: bool indicando se salvou algum anexo
     """
     BNCC = ["joão", "eduardo", "leda"]
@@ -103,15 +103,14 @@ def save_attachments(message: Any, selected_option, docs_dir: str, openai_key: s
 
         sender_folder = sanitize_folder_name(info["sender_name"])
         subject_folder = sanitize_folder_name(info["subject"])
-        #Verifica qual opção foi selecionada e faz o direcionamento correto
-        if selected_option == 1:
-            base_path = os.path.join(docs_dir, sender_folder, subject_folder)
-        elif selected_option == 2 and any(item.lower() in sender_folder for item in BNCC):
+
+        # Verifica qual opção foi selecionada e faz o direcionamento correto
+        if selected_option == 2 and any(item.lower() in sender_folder.lower() for item in BNCC):
             base_path = os.path.join(docs_dir, "BNCC", sender_folder, subject_folder)
-        elif selected_option == 3 and any(item.lower() in sender_folder for item in TECH):
+        elif selected_option == 3 and any(item.lower() in sender_folder.lower() for item in TECH):
             base_path = os.path.join(docs_dir, "TECH", sender_folder, subject_folder)
         else:
-            continue
+            base_path = os.path.join(docs_dir, sender_folder, subject_folder)
         
         if len(base_path) > MAX_PATH_LENGTH - 50:
             subject_folder = subject_folder[:MAX_PATH_LENGTH - len(docs_dir) - len(sender_folder) - 10]
@@ -175,13 +174,13 @@ def check_email(base_dir: str, openai_key: str | None = None) -> list[dict[str, 
     data = []
     current_year = datetime.now().year
 
-    #Cria a tela para a escolha do filtro
     root = tk.Tk()
     root.title("Escolha uma opção")
+    selected_option = tk.IntVar(value=1)
+
     def clicked_button(value):
-            root.destroy()
-            global selected_option
-            selected_option = value
+        selected_option.set(value)
+        root.destroy()
 
     btn_no_filter = tk.Button(root, text="Sem filtro", command=lambda: clicked_button(1))
     btn_bncc = tk.Button(root, text="BNCC", command=lambda: clicked_button(2))
@@ -192,13 +191,15 @@ def check_email(base_dir: str, openai_key: str | None = None) -> list[dict[str, 
     btn_tech.pack(pady=5)
 
     root.mainloop()
+    option_value = selected_option.get()
+
     for message in inbox.Items:
         try:
             email_year = message.ReceivedTime.year
             if email_year != current_year:
                 continue
 
-            if save_attachments(message, selected_option, base_dir, openai_key):
+            if save_attachments(message, option_value, base_dir, openai_key):
                 message_data = get_email_info(message)
                 data.append(message_data)
         except Exception as e:
